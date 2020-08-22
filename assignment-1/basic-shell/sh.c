@@ -54,8 +54,31 @@ struct pipecmd
   struct cmd *right; // lado direito do pipe
 };
 
+typedef struct Node
+{
+  struct Node *next;
+  char *value;
+} Node;
+
+typedef struct Queue
+{
+  Node *head;
+  Node *tail;
+  size_t size;
+} Queue;
+
+Node *createNode();
+Queue *createQueue();
+
+void enqueue(Queue *queue, char *str);
+int isFull(Queue *queue, size_t maxSize);
+void dequeue(Queue *queue);
+
+void cleanup(Queue *queue);
+
 int fork1(void);              // Fork mas fechar se ocorrer erro.
 struct cmd *parsecmd(char *); // Processar o linha de comando.
+int isHistory(char *);        // Checar se é um comando "history"
 
 /* Executar comando cmd.  Nunca retorna. */
 void runcmd(struct cmd *cmd)
@@ -182,10 +205,21 @@ int main(void)
 {
   static char buf[100];
   int r;
+  unsigned short HISTORY_MAX_COMMANDS = 50;
 
+  Queue *commands = createQueue();
   // Ler e rodar comandos.
   while (getcmd(buf, sizeof(buf)) >= 0)
   {
+    char *bufferCopy = malloc(sizeof(buf));
+    strncpy(bufferCopy, buf, 100);
+
+    if (isFull(commands, HISTORY_MAX_COMMANDS))
+    {
+      dequeue(commands);
+    }
+    enqueue(commands, bufferCopy);
+
     /* MARK START task1 */
     /* TAREFA1: O que faz o if abaixo e por que ele é necessário?
      * Insira sua resposta no código e modifique o fprintf abaixo
@@ -224,11 +258,85 @@ int main(void)
     }
     /* MARK END task1 */
 
+    if (isHistory(buf))
+    {
+      int i = 1;
+      Node *current = commands->head;
+      while (current->next != NULL)
+      {
+        current = current->next;
+        fprintf(stdout, "%d %s", i, current->value);
+        i++;
+      }
+      continue;
+    }
+
     if (fork1() == 0)
       runcmd(parsecmd(buf));
     wait(&r);
   }
+
+  cleanup(commands);
+  free(commands);
   exit(0);
+}
+
+int isHistory(char *s)
+{
+  return strcmp(s, "history\n") == 0;
+}
+
+Node *createNode(char *s)
+{
+  Node *n = malloc(sizeof(Node));
+  n->next = NULL;
+  n->value = s;
+  return n;
+}
+
+Queue *createQueue()
+{
+  Node *sentinelHead = createNode(NULL);
+
+  Queue *commands = malloc(sizeof(Queue));
+  commands->head = sentinelHead;
+  commands->tail = sentinelHead;
+  commands->size = 0;
+  return commands;
+}
+
+void enqueue(Queue *queue, char *str)
+{
+  assert(queue->tail->next == NULL);
+
+  Node *newNode = createNode(str);
+  queue->tail->next = newNode;
+  queue->tail = newNode;
+  queue->size++;
+}
+
+int isFull(Queue *queue, size_t maxSize)
+{
+  return queue->size == maxSize;
+}
+
+void dequeue(Queue *queue)
+{
+  Node *toRemove = queue->head->next;
+  Node *newHeadNext = toRemove->next;
+
+  queue->head->next = newHeadNext;
+  free(toRemove->value);
+  free(toRemove);
+  queue->size--;
+}
+
+void cleanup(Queue *queue)
+{
+  while (queue->size > 0)
+  {
+    dequeue(queue);
+  }
 }
 
 int fork1(void)
