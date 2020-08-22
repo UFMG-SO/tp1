@@ -90,9 +90,28 @@ void runcmd(struct cmd *cmd)
     /* MARK START task3
      * TAREFA3: Implemente codigo abaixo para executar
      * comando com redirecionamento. */
-    fprintf(stderr, "redir nao implementado\n");
+
+    int newFileDescriptor = open(rcmd->file, O_RDWR | O_CREAT, 0577);
+    if (newFileDescriptor == -1)
+    {
+      fprintf(stderr, "failed to open file %s", rcmd->file);
+      break;
+    }
+
+    /*
+      Duplicates the rcmd file descriptor (either stdin or stdout, previously determined by parseredirs function)
+      to newFileDescriptor. It works for both in and out redirections.
+     */
+    int err = dup2(newFileDescriptor, rcmd->fd);
+    if (err == -1)
+    {
+      fprintf(stderr, "failed to duplicate file descriptor");
+      break;
+    }
+
     /* MARK END task3 */
     runcmd(rcmd->cmd);
+    close(newFileDescriptor);
     break;
 
   case '|':
