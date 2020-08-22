@@ -91,7 +91,7 @@ void runcmd(struct cmd *cmd)
      * TAREFA3: Implemente codigo abaixo para executar
      * comando com redirecionamento. */
 
-    int newFileDescriptor = open(rcmd->file, O_RDWR | O_CREAT, 0577);
+    int newFileDescriptor = open(rcmd->file, O_RDWR | O_CREAT, 0577); // TODO: use permissions from rcmd
     if (newFileDescriptor == -1)
     {
       fprintf(stderr, "failed to open file %s", rcmd->file);
@@ -116,10 +116,48 @@ void runcmd(struct cmd *cmd)
 
   case '|':
     pcmd = (struct pipecmd *)cmd;
-    /* MARK START task4
-     * TAREFA4: Implemente codigo abaixo para executar
-     * comando com pipes. */
-    fprintf(stderr, "pipe nao implementado\n");
+
+    if (pipe(p) == -1)
+    {
+      perror("failed to create pipe");
+      break;
+    }
+
+    if (fork() == 0)
+    {
+      // left
+      close(p[0]);
+
+      int errLeft = dup2(p[1], STDOUT_FILENO);
+      if (errLeft == -1)
+      {
+        fprintf(stderr, "failed to duplicate file descriptor");
+        break;
+      }
+
+      runcmd(pcmd->left);
+    }
+
+    if (fork() == 0)
+    {
+      // right
+      close(p[1]);
+
+      int errRight = dup2(p[0], STDIN_FILENO);
+      if (errRight == -1)
+      {
+        fprintf(stderr, "failed to duplicate file descriptor");
+        break;
+      }
+      runcmd(pcmd->right);
+    }
+
+    close(p[0]);
+    close(p[1]);
+
+    // wait for both children to terminate
+    wait(&r);
+    wait(&r);
     /* MARK END task4 */
     break;
   }
