@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <sys/errno.h>
 
 /* MARK NAME Seu Nome Aqui */
 /* MARK NAME Nome de Outro Integrante Aqui */
@@ -91,7 +92,8 @@ void runcmd(struct cmd *cmd)
      * TAREFA3: Implemente codigo abaixo para executar
      * comando com redirecionamento. */
 
-    int newFileDescriptor = open(rcmd->file, O_RDWR | O_CREAT, 0577); // TODO: use permissions from rcmd
+    // TODO: use permissions from rcmd
+    int newFileDescriptor = open(rcmd->file, O_RDWR | O_CREAT, 0577);
     if (newFileDescriptor == -1)
     {
       fprintf(stderr, "failed to open file %s", rcmd->file);
@@ -99,7 +101,8 @@ void runcmd(struct cmd *cmd)
     }
 
     /*
-      Duplicates the rcmd file descriptor (either stdin or stdout, previously determined by parseredirs function)
+      Duplicates the rcmd file descriptor
+      (either stdin or stdout, previously determined by parseredirs function)
       to newFileDescriptor. It works for both in and out redirections.
      */
     int err = dup2(newFileDescriptor, rcmd->fd);
@@ -187,11 +190,36 @@ int main(void)
     /* TAREFA1: O que faz o if abaixo e por que ele é necessário?
      * Insira sua resposta no código e modifique o fprintf abaixo
      * para reportar o erro corretamente. */
+
+    /* O if abaixo verifica se o comando informado é um cd (change directory).
+     * Se for o caso, o programa utiliza a syscall chdir para realizar a
+     * mudança de diretório. O if aninhado verifica se a syscall chdir
+     * falhou (sinalizado por código de retorno menor que 0). Quando
+     * acontece um erro em uma syscall, o sistema operacional popula a variável
+     * global errno (definida em errno.h) com o código do erro.
+     * Utilizamos a função strerror para imprimir a mensagem associada ao erro
+     * acontecido.
+     * 
+     * Exemplos
+     * 
+     * 1 - Usuário não tem permissão de leitura na pasta informada:
+     *    "Failed to change directory: Permission denied"
+     * 2 - Diretório informado não existe:
+     *    "Failed to change directory: No such file or directory"
+     * 
+     * Notas
+     * 
+     * A implementação utilizando fprintf e strerror é equivalente à função
+     * perror definida em stdio.h, mas mantivemos a utilização de fprintf
+     * conforme solicitado em TAREFA1.
+     */
     if (buf[0] == 'c' && buf[1] == 'd' && buf[2] == ' ')
     {
       buf[strlen(buf) - 1] = 0;
       if (chdir(buf + 3) < 0)
-        fprintf(stderr, "reporte erro\n");
+      {
+        fprintf(stderr, "Failed to change directory: %s\n", strerror(errno));
+      }
       continue;
     }
     /* MARK END task1 */
