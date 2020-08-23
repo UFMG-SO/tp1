@@ -163,8 +163,7 @@ void runcmd(struct cmd *cmd)
 
       runcmd(pcmd->left);
     }
-
-    if (fork() == 0)
+    else
     {
       // right
       close(p[1]);
@@ -182,7 +181,6 @@ void runcmd(struct cmd *cmd)
     close(p[1]);
 
     // wait for both children to terminate
-    wait(&r);
     wait(&r);
     /* MARK END task4 */
     break;
@@ -211,14 +209,12 @@ int main(void)
   // Ler e rodar comandos.
   while (getcmd(buf, sizeof(buf)) >= 0)
   {
-    char *bufferCopy = malloc(sizeof(buf));
-    strncpy(bufferCopy, buf, 100);
-
+    char *curr = strdup(buf);
     if (isFull(commands, HISTORY_MAX_COMMANDS))
     {
       dequeue(commands);
     }
-    enqueue(commands, bufferCopy);
+    enqueue(commands, curr);
 
     /* MARK START task1 */
     /* TAREFA1: O que faz o if abaixo e por que ele é necessário?
