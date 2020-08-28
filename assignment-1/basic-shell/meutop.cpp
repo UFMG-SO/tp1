@@ -3,10 +3,13 @@
 #include <iomanip>
 #include "dirent.h"
 #include <sys/stat.h>
+#include <signal.h>
 
 // Pode?
 #include <pwd.h>
 #include <unistd.h>
+#include <thread>
+#include <vector>
 
 using namespace std;
 
@@ -14,29 +17,39 @@ const int LINE_PID = 1;
 const int LINE_NAME = 3;
 const int LINE_STATE = 6;
 
-const int PROCESSES_LIMIT = 20;
+const int PROCESSES_LIMIT = 9999999;
 
 void clear()
 {
-	printf("\033[H\033[J");
+	cout << "\033[2J\033[1;1H";
 }
 
-void print_status(int PID)
+// Retorna se foi possivel ler o processso
+bool read_process(int PID, bool need_print)
 {
+	// Define o caminho do arquivo e tenta abri-lo
 	string path = "/proc/" + to_string(PID) + "/status";
 	ifstream file(path);
 
+	// Caso não tenha aberto o arquivo nao deve prosseguir
 	if (!file.is_open())
 	{
-		cout << "Processo de PID " << PID << " nao encontrado" << endl;
+		if (need_print)
+		{
+			cout << "Processo de PID " << PID << " nao encontrado" << endl;
+		}
+		return false;
 	}
 
 	string line;
-	string id = "", user = "", name = "", state = "";
 	int line_counter = 0;
+	string id = "", user = "", name = "", state = "";
+
+	// Lê o arquivo linha a linha
 	while (getline(file, line))
 	{
 		line_counter++;
+		// Caso a linha em que estamos seja uma das pré-definidas
 		if (line_counter == LINE_PID || line_counter == LINE_NAME || line_counter == LINE_STATE)
 		{
 			line.erase(line.find('\t'), 1);								   // Remove o tab (\t) da string
@@ -68,46 +81,100 @@ void print_status(int PID)
 		}
 	}
 
+	// Fecha o arquivo e mostra as informações do processo
 	file.close();
-	cout << setw(5) << id << setw(5) << '|' << setw(8) << user << setw(3) << '|' << setw(18) << name << setw(3) << '|' << setw(5) << state << setw(5) << '|' << endl;
+	if (need_print)
+	{
+		cout << setw(5) << id << setw(5) << '|' << setw(18) << user << setw(4) << '|' << setw(18) << name << setw(3) << '|' << setw(5) << state << setw(5) << '|' << endl;
+	}
+	return true;
 }
 
 void read_processes()
 {
 	DIR *directory;
 	struct dirent *entry;
+	// Tenta abrir a pasta /proc
 	if ((directory = opendir("/proc")) != NULL)
 	{
-		int directory_count = 0;
-		cout << setw(5) << "PID" << setw(5) << '|' << setw(8) << "User" << setw(3) << '|' << setw(18) << "PROCNAME" << setw(3) << '|' << setw(8) << "Estado" << setw(2) << '|' << endl;
-		cout << "---------|----------|--------------------|---------|" << endl;
+		int processes_count = 0;
+		// Mostra o cabeçalho da tabela
+		cout << setw(5) << "PID" << setw(5) << '|' << setw(18) << "User" << setw(4) << '|' << setw(18) << "PROCNAME" << setw(3) << '|' << setw(8) << "Estado" << setw(2) << '|' << endl;
+		cout << "---------|---------------------|--------------------|---------|" << endl;
+		// Itera sob os diretorios da /proc
 		while ((entry = readdir(directory)) != NULL)
 		{
+			// Tenta converter o nome para um
 			int folder_name_number = atoi(entry->d_name);
-			if (folder_name_number && folder_name_number > 999)
+			// Caso tenha conseguido converter é porque é um processo
+			// if (folder_name_number)
+			if (folder_name_number)
 			{
-				directory_count++;
-				if (directory_count > PROCESSES_LIMIT)
+				processes_count++;
+				// Se passar do limite de processos cai fora
+				if (processes_count > PROCESSES_LIMIT)
 				{
 					break;
 				}
-				print_status(folder_name_number);
+				read_process(folder_name_number, true);
 			}
 		}
 		closedir(directory);
 	}
 }
 
-void sent_signal()
+void send_signal()
 {
+	char *inputed_PID = new char[256];
+	char *inputed_signal = new char[256];
+	cout << "> ";
+	cin >> inputed_PID >> inputed_signal;
+	int PID = atoi(inputed_PID);
+	int signal = atoi(inputed_signal);
+	if (PID && signal)
+	{
+		if (read_process(PID, false))
+		{
+			// kill(PID, signal);
+			cout << "PID valido" << endl;
+		}
+		else
+		{
+			cout << "PID invalido" << endl;
+		}
+	}
+	else
+	{
+		cout << "Problema na leitura do PID e/ou sinal" << endl;
+	}
+	delete inputed_PID;
+	delete inputed_signal;
+}
+
+void teste()
+{
+	while (1)
+	{
+		read_processes();
+		sleep(1);
+		clear();
+	}
+}
+
+void teste2()
+{
+	while (1)
+	{
+		send_signal();
+	}
 }
 
 int main(int argc, char **argv)
 {
-	while (true)
-	{
-		cout << "LIMPA TELA" << endl;
-		read_processes();
-		sleep(1);
-	}
+	clear();
+	thread thread1 = thread(teste);
+	thread thread2 = thread(teste2);
+	thread1.join();
+	thread2.join();
+	return 0;
 }
