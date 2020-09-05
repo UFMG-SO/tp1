@@ -16,7 +16,7 @@ const int LINE_PID = 1;
 const int LINE_NAME = 3;
 const int LINE_STATE = 6;
 
-const int PROCESSES_LIMIT = 999999;
+const int PROCESSES_LIMIT = 20;
 
 void clear()
 {
