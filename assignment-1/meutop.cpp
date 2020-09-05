@@ -140,25 +140,32 @@ void send_signal()
 	// Insere o 1o caracter lido no inicio da string do PID
 	inputed_PID.insert(0, first_char);
 
-	// Tenta converter para int
-	int PID = stoi(inputed_PID);
-	int signal = stoi(inputed_signal);
-
-	// Se converteu ambas variaveis
-	if (PID && signal)
+	try
 	{
-		// Verifica se o PID é valido
-		if (read_process(PID, false))
+		// Tenta converter para int
+		int PID = stoi(inputed_PID);
+		int signal = stoi(inputed_signal);
+
+		// Se converteu ambas variaveis
+		if (PID && signal)
 		{
-			// Envia o sinal
-			kill(PID, signal);
+			// Verifica se o PID é valido
+			if (read_process(PID, false))
+			{
+				// Envia o sinal
+				kill(PID, signal);
+			}
+			else
+			{
+				cout << "PID invalido" << endl;
+			}
 		}
 		else
 		{
-			cout << "PID invalido" << endl;
+			cout << "Problema na leitura do PID e/ou sinal" << endl;
 		}
 	}
-	else
+	catch (...)
 	{
 		cout << "Problema na leitura do PID e/ou sinal" << endl;
 	}
