@@ -158,7 +158,7 @@ void send_signal()
 			cout << "PID invalido" << endl;
 		}
 	}
-	8107 1 else
+	else
 	{
 		cout << "Problema na leitura do PID e/ou sinal" << endl;
 	}
