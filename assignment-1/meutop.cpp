@@ -1,15 +1,14 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
-#include "dirent.h"
 #include <sys/stat.h>
 #include <signal.h>
+#include "dirent.h"
 
 // Pode?
+#include <vector>
 #include <pwd.h>
 #include <unistd.h>
-#include <thread>
-#include <vector>
 
 using namespace std;
 
@@ -17,7 +16,7 @@ const int LINE_PID = 1;
 const int LINE_NAME = 3;
 const int LINE_STATE = 6;
 
-const int PROCESSES_LIMIT = 9999999;
+const int PROCESSES_LIMIT = 999999;
 
 void clear()
 {
@@ -107,7 +106,6 @@ void read_processes()
 			// Tenta converter o nome para um
 			int folder_name_number = atoi(entry->d_name);
 			// Caso tenha conseguido converter é porque é um processo
-			// if (folder_name_number)
 			if (folder_name_number)
 			{
 				processes_count++;
@@ -125,56 +123,55 @@ void read_processes()
 
 void send_signal()
 {
-	char *inputed_PID = new char[256];
-	char *inputed_signal = new char[256];
 	cout << "> ";
+
+	string first_char;
+	first_char = cin.get();
+	// Se o usuário digitar enter cai fora
+	if (first_char == "\n")
+	{
+		return;
+	}
+
+	// Le o PID e o sinal
+	string inputed_PID, inputed_signal;
 	cin >> inputed_PID >> inputed_signal;
-	int PID = atoi(inputed_PID);
-	int signal = atoi(inputed_signal);
+
+	// Insere o 1o caracter lido no inicio da string do PID
+	inputed_PID.insert(0, first_char);
+
+	// Tenta converter para int
+	int PID = stoi(inputed_PID);
+	int signal = stoi(inputed_signal);
+
+	// Se converteu ambas variaveis
 	if (PID && signal)
 	{
+		// Verifica se o PID é valido
 		if (read_process(PID, false))
 		{
-			// kill(PID, signal);
-			cout << "PID valido" << endl;
+			// Envia o sinal
+			kill(PID, signal);
 		}
 		else
 		{
 			cout << "PID invalido" << endl;
 		}
 	}
-	else
+	8107 1 else
 	{
 		cout << "Problema na leitura do PID e/ou sinal" << endl;
-	}
-	delete inputed_PID;
-	delete inputed_signal;
-}
-
-void teste()
-{
-	while (1)
-	{
-		read_processes();
-		sleep(1);
-		clear();
-	}
-}
-
-void teste2()
-{
-	while (1)
-	{
-		send_signal();
 	}
 }
 
 int main(int argc, char **argv)
 {
-	clear();
-	thread thread1 = thread(teste);
-	thread thread2 = thread(teste2);
-	thread1.join();
-	thread2.join();
+	while (true)
+	{
+		clear();
+		read_processes();
+		send_signal();
+		sleep(1);
+	}
 	return 0;
 }
