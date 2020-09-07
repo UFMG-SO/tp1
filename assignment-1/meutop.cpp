@@ -4,11 +4,12 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include "dirent.h"
-
-// Pode?
+#include <thread>
+#include <termios.h>
 #include <vector>
 #include <pwd.h>
 #include <unistd.h>
+#include <mutex>
 
 using namespace std;
 
@@ -17,6 +18,9 @@ const int LINE_NAME = 3;
 const int LINE_STATE = 6;
 
 const int PROCESSES_LIMIT = 20;
+
+string input_str = "";
+mutex mtx;
 
 void clear()
 {
@@ -51,8 +55,8 @@ bool read_process(int PID, bool need_print)
 		// Caso a linha em que estamos seja uma das pré-definidas
 		if (line_counter == LINE_PID || line_counter == LINE_NAME || line_counter == LINE_STATE)
 		{
-			line.erase(line.find('\t'), 1);								   // Remove o tab (\t) da string
-			string description = line.substr(0, line.find(':'));		   // Pega o que está antes do ':'
+			line.erase(line.find('\t'), 1);																 // Remove o tab (\t) da string
+			string description = line.substr(0, line.find(':'));					 // Pega o que está antes do ':'
 			string value = line.substr(line.find(':') + 1, line.length()); // Pega o que está depois do ':'
 			if (description == "Name")
 			{
@@ -119,27 +123,26 @@ void read_processes()
 		}
 		closedir(directory);
 	}
+	cout << "> " << input_str;
+}
+
+void do_read_processes()
+{
+	do
+	{
+		mtx.lock();
+		clear();
+		read_processes();
+		mtx.unlock();
+		sleep(1);
+	} while (true);
 }
 
 void send_signal()
 {
-	cout << "> ";
-
-	string first_char;
-	first_char = cin.get();
-	// Se o usuário digitar enter cai fora
-	if (first_char == "\n")
-	{
-		return;
-	}
-
-	// Le o PID e o sinal
-	string inputed_PID, inputed_signal;
-	cin >> inputed_PID >> inputed_signal;
-
-	// Insere o 1o caracter lido no inicio da string do PID
-	inputed_PID.insert(0, first_char);
-
+	mtx.lock();
+	string inputed_PID = input_str.substr(0, input_str.find(" "));
+	string inputed_signal = input_str.substr(input_str.find(" ") + 1, input_str.size());
 	try
 	{
 		// Tenta converter para int
@@ -158,27 +161,64 @@ void send_signal()
 			else
 			{
 				cout << "PID invalido" << endl;
+				sleep(3);
 			}
 		}
 		else
 		{
 			cout << "Problema na leitura do PID e/ou sinal" << endl;
+			sleep(3);
 		}
 	}
 	catch (...)
 	{
 		cout << "Problema na leitura do PID e/ou sinal" << endl;
+		sleep(3);
 	}
+	input_str = "";
+	mtx.unlock();
+}
+
+void read_from_console()
+{
+	int current_char;
+
+	/*
+		Configura atributos do terminal para garantir o funcionamento correto
+	 	de I/O concorrente
+	*/
+	struct termios old_terminal_io;
+	struct termios new_terminal_io;
+	tcgetattr(STDIN_FILENO, &old_terminal_io);
+	new_terminal_io = old_terminal_io;
+	new_terminal_io.c_lflag &= (~ICANON & ~ECHO);
+	tcsetattr(STDIN_FILENO, TCSANOW, &new_terminal_io);
+	setvbuf(stdout, NULL, _IONBF, 0);
+
+	while (true)
+	{
+		current_char = getchar();
+		if (current_char == '\n')
+		{
+			break;
+		}
+		else
+		{
+			input_str += current_char;
+		}
+		read_processes();
+	}
+	tcsetattr(STDIN_FILENO, TCSANOW, &old_terminal_io);
 }
 
 int main(int argc, char **argv)
 {
+	thread printer = thread(do_read_processes);
 	while (true)
 	{
-		clear();
-		read_processes();
+		thread reader = thread(read_from_console);
+		reader.join();
 		send_signal();
-		sleep(1);
 	}
 	return 0;
 }
