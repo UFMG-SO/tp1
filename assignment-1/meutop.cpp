@@ -10,6 +10,7 @@
 #include <pwd.h>
 #include <unistd.h>
 #include <mutex>
+#include <string.h>
 
 using namespace std;
 
@@ -24,7 +25,7 @@ mutex mtx;
 
 void clear()
 {
-	cout << "\033[2J\033[1;1H";
+	system("clear");
 }
 
 // Retorna se foi possivel ler o processso
@@ -55,8 +56,8 @@ bool read_process(int PID, bool need_print)
 		// Caso a linha em que estamos seja uma das pré-definidas
 		if (line_counter == LINE_PID || line_counter == LINE_NAME || line_counter == LINE_STATE)
 		{
-			line.erase(line.find('\t'), 1);																 // Remove o tab (\t) da string
-			string description = line.substr(0, line.find(':'));					 // Pega o que está antes do ':'
+			line.erase(line.find('\t'), 1);								   // Remove o tab (\t) da string
+			string description = line.substr(0, line.find(':'));		   // Pega o que está antes do ':'
 			string value = line.substr(line.find(':') + 1, line.length()); // Pega o que está depois do ':'
 			if (description == "Name")
 			{
@@ -160,19 +161,23 @@ void send_signal()
 			}
 			else
 			{
-				cout << "PID invalido" << endl;
+				cout << endl
+					 << "PID invalido" << endl;
 				sleep(3);
 			}
 		}
 		else
 		{
-			cout << "Problema na leitura do PID e/ou sinal" << endl;
+			cout << endl
+				 << endl
+				 << "Problema na leitura do PID e/ou sinal" << endl;
 			sleep(3);
 		}
 	}
 	catch (...)
 	{
-		cout << "Problema na leitura do PID e/ou sinal" << endl;
+		cout << endl
+			 << "Problema na leitura do PID e/ou sinal" << endl;
 		sleep(3);
 	}
 	input_str = "";
@@ -201,6 +206,16 @@ void read_from_console()
 		if (current_char == '\n')
 		{
 			break;
+		}
+		// Backspace
+		else if (current_char == 127)
+		{
+			if (input_str != "")
+			{
+				input_str = input_str.substr(0, input_str.size() - 1);
+				const char delbuf[] = "\b\b\b   \b\b\b";
+				write(STDOUT_FILENO, delbuf, strlen(delbuf));
+			}
 		}
 		else
 		{
