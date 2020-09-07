@@ -80,6 +80,13 @@ int fork1(void);              // Fork mas fechar se ocorrer erro.
 struct cmd *parsecmd(char *); // Processar o linha de comando.
 int isHistory(char *);        // Checar se é um comando "history"
 
+int octal_to_decimal(int octal)
+{
+  char s[4];
+  sprintf(s, "%d", octal);
+  return strtoul(s, NULL, 8);
+}
+
 /* Executar comando cmd.  Nunca retorna. */
 void runcmd(struct cmd *cmd)
 {
@@ -115,8 +122,8 @@ void runcmd(struct cmd *cmd)
      * TAREFA3: Implemente codigo abaixo para executar
      * comando com redirecionamento. */
 
-    // TODO: use permissions from rcmd
-    int newFileDescriptor = open(rcmd->file, O_RDWR | O_CREAT, 0577);
+    mode_t mode = octal_to_decimal(rcmd->mode);
+    int newFileDescriptor = open(rcmd->file, O_RDWR | O_CREAT, mode);
     if (newFileDescriptor == -1)
     {
       fprintf(stderr, "failed to open file %s", rcmd->file);
