@@ -203,15 +203,17 @@ void read_from_console()
 	while (true)
 	{
 		current_char = getchar();
+		// Caso seja enter
 		if (current_char == '\n')
 		{
 			break;
 		}
-		// Backspace
+		// Case seja backspace
 		else if (current_char == 127)
 		{
 			if (input_str != "")
 			{
+				// Remove o último caracter da string e do terminal
 				input_str = input_str.substr(0, input_str.size() - 1);
 				const char delbuf[] = "\b\b\b   \b\b\b";
 				write(STDOUT_FILENO, delbuf, strlen(delbuf));
